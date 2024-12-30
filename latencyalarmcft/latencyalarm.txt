@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This Template deploys for Trigger the alarm when ELB  crosses threshold limit 320ms and 26ms on Daily Basis
+Parameters:
+    NotificationEmail1:
+        Type: String
+        Description: Email address for alarm notifications.
+        Default: changeme@rbbn.com
+    NotificationEmail2:
+        Type: String
+        Description: Email address for alarm  notifications. eg - For production account enter mail-id of mnoc[Managed-services-NOC@rbbn.com]
+        Default: changeme2@rbbn.com
+    IDHLoadBalancerName:
+        Type: String
+        Description: Enter your loadbalancer name. e.g - app/prod001-fe-prod-elb/587e57901235a9ce/- app/prod011-fe-prod-elb/1406ea44ce04971d/- app/prod021-fe-prod-elb/ec1fc88e5743052b
+        Default: ''
+    MetricNameDetails:
+        Type: String
+        Description: Enter your MetricName. e.g - TargetResponseTime
+        Default: ''
+    IDHP99ThresholdValue:
+        Type: String
+        Description: Select Threshold value. prod001= 0.026, prod011= 0.020, prod021= 0.026, prod301= 0.010, prod311= 0.010
+        Default: ''
+    STILoadBalancerName:
+        Type: String
+        Description: Enter your loadbalancer name. e.g - app/prod001-sti-prod-elb/5a1d29665ca59542 app/prod011-sti-prod-elb/12047ec43f818bdc app/prod021-sti-prod-elb/8ae8440fe55e458a
+        Default: ''
+    STIP99ThresholdValue:
+        Type: String
+        Description: Select Threshold value. prod001= 0.008, prod011= 0.010, prod021= 0.008, prod301= 0.006, prod311= 0.006
+        Default: ''
+
+Resources:
+    ELBHighLatencyAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: "Latency Alarm::{#CRITICAL_ALARM}:: ELB IDH High Latency Alarm"
+            AlarmDescription: ELB crossed 320ms threshold
+            ActionsEnabled: TRUE
+            AlarmActions:
+                - !Ref AlarmSNSTopic
+            MetricName: !Ref MetricNameDetails
+            Namespace: AWS/ApplicationELB
+            Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref IDHLoadBalancerName
+            ExtendedStatistic: p90
+            Period: 60
+            DatapointsToAlarm: 3
+            EvaluationPeriods: 5
+            Threshold: 0.32
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: missing
+
+    P99DailyLatencyAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: "Latency Alarm::{#MINOR_ALARM}:: P99 Daily Latency Alert When ELB crossed threshold in 24hrs"
+            AlarmDescription: When ELB crossed threshold value  in 24hrs
+            ActionsEnabled: TRUE
+            AlarmActions:
+                - !Ref AlarmSNSTopic1
+            MetricName: !Ref MetricNameDetails
+            Namespace: AWS/ApplicationELB
+            Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref IDHLoadBalancerName
+            ExtendedStatistic: p99
+            Period: 86400
+            DatapointsToAlarm: 1
+            EvaluationPeriods: 1
+            Threshold: !Ref IDHP99ThresholdValue
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: missing
+
+    STIHighLatencyAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: "Latency Alarm::{#CRITICAL_ALARM}:: ELB STI High Latency Alarm"
+            AlarmDescription: ELB crossed STI Threshold Value 
+            ActionsEnabled: TRUE
+            AlarmActions:
+                - !Ref AlarmSNSTopic
+            MetricName: !Ref MetricNameDetails
+            Namespace: AWS/ApplicationELB
+            Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref STILoadBalancerName
+            ExtendedStatistic: p90
+            Period: 60
+            DatapointsToAlarm: 3
+            EvaluationPeriods: 5
+            Threshold: 0.3
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: missing
+
+    STIP99DailyLatencyAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Properties:
+            AlarmName: "Latency Alarm::{#MINOR_ALARM}:: P99 Daily Latency Alert When STI crossed threshold in 24hrs"
+            AlarmDescription: When ELB crossed threshold value  in 24hrs
+            ActionsEnabled: TRUE
+            AlarmActions:
+                - !Ref AlarmSNSTopic1
+            MetricName: !Ref MetricNameDetails
+            Namespace: AWS/ApplicationELB
+            Dimensions:
+                - Name: LoadBalancer
+                  Value: !Ref STILoadBalancerName
+            ExtendedStatistic: p99
+            Period: 86400
+            DatapointsToAlarm: 1
+            EvaluationPeriods: 1
+            Threshold: !Ref STIP99ThresholdValue
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: missing      
+
+    AlarmSNSTopic:
+        Type: AWS::SNS::Topic
+        Properties:
+            Subscription:
+                - Endpoint: !Ref NotificationEmail1
+                  Protocol: "email"
+                - Endpoint: !Ref NotificationEmail2
+                  Protocol: "email"
+            TopicName: HighLatencyAlarm
+    AlarmSNSTopic1:
+        Type: AWS::SNS::Topic
+        Properties:
+            Subscription:
+                - Endpoint: !Ref NotificationEmail1
+                  Protocol: "email"
+                - Endpoint: !Ref NotificationEmail2
+                  Protocol: "email"
+            TopicName: P99DailyLatencyAlarm        
